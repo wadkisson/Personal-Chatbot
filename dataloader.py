@@ -1,10 +1,11 @@
 #Basic cleanup of the dataloader from this repo: https://github.com/karpathy/nanoGPT
 import tiktoken
+import torch
 import os
 from tqdm import tqdm
 import numpy as np
 from datasets import load_dataset
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 tokenizer = tiktoken.get_encoding("gpt2")
 

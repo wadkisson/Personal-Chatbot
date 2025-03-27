@@ -44,7 +44,7 @@ else:
 max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup = 10
-max_steps = 50
+max_steps = 1000
 optimizer = model.set_optimimzers(lr=6e-4, weight_decay=0.1)
 
 # Batch size and gradient accumulation setup
@@ -54,35 +54,38 @@ grad_accum_steps = 32  # Fixed number of gradient accumulation steps
 effective_batch_size = micro_batch_size * grad_accum_steps
 print(f"Effective batch size: {effective_batch_size}")
 
-
+def load_tokens(file):
+    tokens = np.load(file)
+    tokens = torch.tensor(tokens,dtype = torch.long)
+    return
 class dataLoader:
     def __init__(self, batch_size, seq_len,split):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.split = split
-        with open('tinyS.txt','r') as f:
-            text = f.read()
-        self.text = tokenizer.encode(text)
-        self.toks = torch.tensor(self.text)
-        self.cur_pos = 0
-        print(f"Dataset size: {len(self.toks)} tokens")
-        
+        root = "edu_fineweb10B"
+        shard_list = os.listdir(root)
+        shards = [shard for shard in shard_list if split in shard]
+        shards = sorted(shards)
+        shards = [os.path.join(root,shard) for shard in shards]
+        self.shards = shards
+        self.reset()
+    def reset(self):
+        self.current_shard = 0
+        self.toks = load_tokens(self.shards[self.current_shard])
+        self.cur_pos = self.batch_size * self.seq_len
     def get_batch(self):
         # Use instance variables instead of globals
         chunk = self.toks[self.cur_pos:self.cur_pos + self.batch_size*self.seq_len + 1]
-        if len(chunk) < self.batch_size*self.seq_len + 1:
-            # If we don't have enough tokens, wrap around
-            self.cur_pos = 0
-            chunk = self.toks[self.cur_pos:self.cur_pos + self.batch_size*self.seq_len + 1]
-            
         sample = chunk[:-1].view(self.batch_size, self.seq_len)
         truth = chunk[1:].view(self.batch_size, self.seq_len)
         self.cur_pos += self.batch_size * self.seq_len
         
         # Wrap around if we've reached the end
-        if self.cur_pos + self.batch_size*self.seq_len > len(self.toks):
-            self.cur_pos = 0
-            
+        if self.cur_pos + self.batch_size*self.seq_len + 1 > len(self.toks):
+            self.current_shard = (self.current_shard + 1)%len(self.shards)
+            self.toks = load_tokens(self.shards[self.current_shard])
+            self.cur_pos = self.batch_size * self.seq_len
         return sample, truth
 
 # Initialize data loader with micro batch size
@@ -130,7 +133,7 @@ def train():
         if i % 100 == 0:
             print(f"Step: {i} | Loss: {loss} | toks per second: {effective_batch_size/dt*1000}")
             model.eval()
-            input = "Enter Shakespeare: "
+            input = "Hello. My name is Jordan Belford. "
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
             while tokens.size(1)<model.max_seq_len:
@@ -145,6 +148,19 @@ def train():
             tokens = tokens[0,:model.max_seq_len]
             text = tokenizer.decode(tokens)
             print(f"Here's a sample for ya: {text}")
+            with torch.no_grad():
+                dl_val.reset()
+                val_loss = 0
+                val_steps = 20
+                for _ in range (val_steps):
+                    sample, truth = dl_val.get_batch()
+                    sample = sample.to(device)
+                    truth = truth.to(device)
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
+                        logits, loss = model.forward(toks = sample, targets = truth)
+                    loss = loss/val_steps
+                    val_loss += loss.detatch()
+            print(f"VAL LOSS: {val_loss}")
             model.train()
 
 train()

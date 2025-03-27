@@ -15,7 +15,7 @@ shard_size = int(1e8)
 DATA_DIR = os.path.join(os.path.dirname(__file__), local_directory)
 fw = load_dataset("HuggingFaceFW/fineweb-edu",name = remote_name,split = "train")
 tokenizer = tiktoken.get_encoding("gpt2")
-end_of_text_token = tokenizer._special_tokens('<|endoftext|>')
+end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
 def tokenize_doc(document):
     tokens = [end_of_text_token]
@@ -28,7 +28,7 @@ def tokenize_doc(document):
 def write_file(filename,token_arr):
     with open(filename,"wb") as f:
         f.write(token_arr.tobytes())
-nprocs = max(1,os.cpu_count()/2)
+nprocs = max(1,os.cpu_count()//2)
 with mp.Pool(nprocs) as p:
     shard_idx = 0
     token_count = 0

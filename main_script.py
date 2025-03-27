@@ -13,6 +13,7 @@ import tiktoken
 import time
 
 tokenizer = tiktoken.get_encoding("gpt2")
+end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
 torch.set_float32_matmul_precision('high')
 
@@ -55,9 +56,9 @@ effective_batch_size = micro_batch_size * grad_accum_steps
 print(f"Effective batch size: {effective_batch_size}")
 
 def load_tokens(file):
-    tokens = np.load(file)
+    tokens = np.fromfile(file,dtype= np.uint16)
     tokens = torch.tensor(tokens,dtype = torch.long)
-    return
+    return tokens
 class dataLoader:
     def __init__(self, batch_size, seq_len,split):
         self.batch_size = batch_size
@@ -75,17 +76,17 @@ class dataLoader:
         self.toks = load_tokens(self.shards[self.current_shard])
         self.cur_pos = self.batch_size * self.seq_len
     def get_batch(self):
-        # Use instance variables instead of globals
-        chunk = self.toks[self.cur_pos:self.cur_pos + self.batch_size*self.seq_len + 1]
-        sample = chunk[:-1].view(self.batch_size, self.seq_len)
-        truth = chunk[1:].view(self.batch_size, self.seq_len)
-        self.cur_pos += self.batch_size * self.seq_len
+        B,T = self.batch_size, self.seq_len
+        chunk = self.toks[self.cur_pos:self.cur_pos + B*T + 1]
+        sample = chunk[:-1].view(B, T)
+        truth = chunk[1:].view(B, T)
+        self.cur_pos += B*T
         
         # Wrap around if we've reached the end
-        if self.cur_pos + self.batch_size*self.seq_len + 1 > len(self.toks):
+        if self.cur_pos + B*T + 1 > len(self.toks):
             self.current_shard = (self.current_shard + 1)%len(self.shards)
             self.toks = load_tokens(self.shards[self.current_shard])
-            self.cur_pos = self.batch_size * self.seq_len
+            self.cur_pos = B*T
         return sample, truth
 
 # Initialize data loader with micro batch size
@@ -109,10 +110,10 @@ def train():
     print(f"Effective batch size: {effective_batch_size}")
     
     for i in range(max_steps):
+        
         t0 = time.time()
         optimizer.zero_grad()
-        total_loss = 0
-            
+        total_loss = 0.0
         # Gradient accumulation loop
         for j in range(grad_accum_steps):
             sample, truth = dl_train.get_batch()
@@ -120,6 +121,7 @@ def train():
             with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
                 logits, loss = model.forward(toks = sample, targets = truth)
             loss = loss / grad_accum_steps
+            total_loss+=loss.detach()
             loss.backward()
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         lr = get_lr(i)
@@ -129,10 +131,14 @@ def train():
         if device == 'cuda':
             torch.cuda.synchronize()
         t1 = time.time()
-        dt = (t1 - t0)*1000
+        dt = t1 - t0#total time in seconds
+        print(f"Step: {i} | Loss: {loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+
+
         if i % 100 == 0:
-            print(f"Step: {i} | Loss: {loss} | toks per second: {effective_batch_size/dt*1000}")
             model.eval()
+            with open ('loss_history.txt','a') as f:
+                f.write(f"{i},{loss.item()},{effective_batch_size/dt*1000}\n")
             input = "Hello. My name is Jordan Belford. "
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
@@ -140,12 +146,12 @@ def train():
                 with torch.no_grad():
                     logits, loss = model.forward(tokens)
                     logits = logits[:,-1,:]
-                    probs = F.softmax(logits,-1)
-                    probs,ind = torch.topk(probs,50,dim=-1)
-                    i = torch.multinomial
+                    probs = F.softmax(logits,dim=-1)
+                    tk_probs,ind = torch.topk(probs,50,dim=-1)
+                    i = torch.multinomial(tk_probs,1)
                     col = torch.gather(ind,-1,i)
                     tokens = torch.cat((tokens,col),dim=1)
-            tokens = tokens[0,:model.max_seq_len]
+            tokens = tokens[0,:model.max_seq_len].tolist()
             text = tokenizer.decode(tokens)
             print(f"Here's a sample for ya: {text}")
             with torch.no_grad():
@@ -159,7 +165,7 @@ def train():
                     with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
                         logits, loss = model.forward(toks = sample, targets = truth)
                     loss = loss/val_steps
-                    val_loss += loss.detatch()
+                    val_loss += loss.detach()
             print(f"VAL LOSS: {val_loss}")
             model.train()
 

@@ -10,7 +10,7 @@ tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
 local_directory = "edu_fineweb10B"
-remote_name = "sampe-10BT"
+remote_name = "sample-10BT"
 shard_size = int(1e8)
 DATA_DIR = os.path.join(os.path.dirname(__file__), local_directory)
 fw = load_dataset("HuggingFaceFW/fineweb-edu",name = remote_name,split = "train")

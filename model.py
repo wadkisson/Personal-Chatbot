@@ -57,29 +57,18 @@ class GPT2(nn.Module):
         self.wte.weight = self.final_projection.weight
         self.apply(self.karpathys_initialize)
     def forward(self,toks,targets=None):
-        print("we got into the forward pass")
         B, seq_len = toks.size()
-        print(f"we got the batch size and sequence length,")
         token_positions = torch.arange(0,seq_len,dtype=torch.long,device=toks.device)
-        print(f"we got the token positions, token_positions")
         token_embedding = self.wte(toks)
-        print(f"we got the token embedding, token_embedding")
         position_embedding = self.wpe(token_positions)
-        print(f"we got the position embedding, position_embedding:")
         x = token_embedding + position_embedding
-        print(f"we got the x, about to start the blocks")
         for block in self.blocks:
-            print(f"we got into the block calculations, calculating a block")
             x = block(x)
         x = self.final_norm(x)
-        print("final norm completed")
         logits = self.final_projection(x)
-        print("logits calculated")
         loss = None
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1,logits.size(-1)),targets.view(-1))
-            print("loss calculated")
-        print("we got to the end of the forward")
         return logits, loss
 
     def karpathys_initialize(self,module):

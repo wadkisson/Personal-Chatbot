@@ -10,6 +10,7 @@ import os
 import math
 from datasets import load_dataset
 import tiktoken
+import time
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
@@ -55,9 +56,10 @@ print(f"Effective batch size: {effective_batch_size}")
 
 
 class dataLoader:
-    def __init__(self, batch_size, seq_len):
+    def __init__(self, batch_size, seq_len,split):
         self.batch_size = batch_size
         self.seq_len = seq_len
+        self.split = split
         with open('tinyS.txt','r') as f:
             text = f.read()
         self.text = tokenizer.encode(text)
@@ -84,8 +86,8 @@ class dataLoader:
         return sample, truth
 
 # Initialize data loader with micro batch size
-dl = dataLoader(micro_batch_size, sequence_length)
-
+dl_train = dataLoader(micro_batch_size, sequence_length,split = "train")
+dl_val = dataLoader(micro_batch_size, sequence_length,split = "val")
 def get_lr(i):
     if i < warmup:
         return max_lr * (i+1)/warmup
@@ -97,45 +99,52 @@ def get_lr(i):
     return min_lr + coeff * (max_lr-min_lr)
 
 def train():
+    model.train()
     print("Starting training...")
     print(f"Micro batch size: {micro_batch_size}")
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
     
     for i in range(max_steps):
+        t0 = time.time()
         optimizer.zero_grad()
         total_loss = 0
             
         # Gradient accumulation loop
         for j in range(grad_accum_steps):
-            sample, truth = dl.get_batch()
-            print(f"Sample shape: {sample.shape}, Truth shape: {truth.shape}")
+            sample, truth = dl_train.get_batch()
             sample, truth = sample.to(device), truth.to(device)
-            print("moved to device")
             with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
-                print("autocast")
                 logits, loss = model.forward(toks = sample, targets = truth)
-                print("we got loss!")
-            print("forward")
             loss = loss / grad_accum_steps
-            print("loss")
             loss.backward()
-            print("loss backward done!!!!!!!")
-        print("backward")
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        print("clip grad norm")
         lr = get_lr(i)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
         optimizer.step()
-        print("step")
         if device == 'cuda':
             torch.cuda.synchronize()
+        t1 = time.time()
+        dt = (t1 - t0)*1000
         if i % 100 == 0:
-            print(f"Step: {i} Loss: {loss:.4f}, LR: {lr:.2e}")
-        if i % 1000 == 0:
-            torch.save(model.state_dict(), "model.pth")
-            print("Model saved")
-
+            print(f"Step: {i} | Loss: {loss} | toks per second: {effective_batch_size/dt*1000}")
+            model.eval()
+            input = "Enter Shakespeare: "
+            tokens = tokenizer.encode(input)
+            tokens = torch.tensor(tokens).unsqueeze(0).to(device)
+            while tokens.size(1)<model.max_seq_len:
+                with torch.no_grad():
+                    logits, loss = model.forward(tokens)
+                    logits = logits[:,-1,:]
+                    probs = F.softmax(logits,-1)
+                    probs,ind = torch.topk(probs,50,dim=-1)
+                    i = torch.multinomial
+                    col = torch.gather(ind,-1,i)
+                    tokens = torch.cat((tokens,col),dim=1)
+            tokens = tokens[0,:model.max_seq_len]
+            text = tokenizer.decode(tokens)
+            print(f"Here's a sample for ya: {text}")
+            model.train()
 
 train()

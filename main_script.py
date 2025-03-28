@@ -11,6 +11,7 @@ import math
 from datasets import load_dataset
 import tiktoken
 import time
+import pyautogui
 
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
@@ -44,8 +45,8 @@ else:
 # Training parameters
 max_lr = 6e-4
 min_lr = max_lr * 0.1
-warmup = 10
-max_steps = 1000
+warmup = 715
+max_steps = 19073
 optimizer = model.set_optimimzers(lr=6e-4, weight_decay=0.1)
 
 # Batch size and gradient accumulation setup
@@ -110,7 +111,7 @@ def train():
     print(f"Effective batch size: {effective_batch_size}")
     
     for i in range(max_steps):
-        
+        pyautogui.click()
         t0 = time.time()
         optimizer.zero_grad()
         total_loss = 0.0
@@ -132,13 +133,14 @@ def train():
             torch.cuda.synchronize()
         t1 = time.time()
         dt = t1 - t0#total time in seconds
-        print(f"Step: {i+500} | Loss: {loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+        print(f"Step: {i} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+        with open ('loss_history.txt','a') as f:
+                f.write(f"{i},{total_loss.item()},{effective_batch_size/dt*1000}\n")
 
 
         if i % 100 == 0:
+            torch.save(model.state_dict(),"model.pth")
             model.eval()
-            with open ('loss_history.txt','a') as f:
-                f.write(f"{i + 500},{loss.item()},{effective_batch_size/dt*1000}\n")
             input = "Hello. My name is Jordan Belford. "
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
@@ -159,18 +161,17 @@ def train():
                 print(f"Error in decoding: {e}")
             with torch.no_grad():
                 dl_val.reset()
-                val_loss = 0
+                val_loss_accum = 0.0
                 val_steps = 20
                 for _ in range (val_steps):
                     sample, truth = dl_val.get_batch()
                     sample = sample.to(device)
                     truth = truth.to(device)
                     with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
-                        logits, loss = model.forward(toks = sample, targets = truth)
-                    loss = loss/val_steps
-                    val_loss += loss.detach()
-            print(f"VAL LOSS: {val_loss}")
-            torch.save(model.state_dict(),"model.pth")
+                        logits, val_loss = model.forward(toks = sample, targets = truth)
+                    val_loss = val_loss/val_steps
+                    val_loss_accum += val_loss.detach()
+            print(f"VAL LOSS: {val_loss_accum}")
             model.train()
 
 train()

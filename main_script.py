@@ -139,6 +139,7 @@ def train():
 
 
         if i % 100 == 0:
+            time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()
             input = "Hello. My name is Jordan Belford. "

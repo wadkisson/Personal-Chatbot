@@ -132,13 +132,13 @@ def train():
             torch.cuda.synchronize()
         t1 = time.time()
         dt = t1 - t0#total time in seconds
-        print(f"Step: {i} | Loss: {loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+        print(f"Step: {i+500} | Loss: {loss} | toks per second ={micro_batch_size*sequence_length/dt}")
 
 
         if i % 100 == 0:
             model.eval()
             with open ('loss_history.txt','a') as f:
-                f.write(f"{i},{loss.item()},{effective_batch_size/dt*1000}\n")
+                f.write(f"{i + 500},{loss.item()},{effective_batch_size/dt*1000}\n")
             input = "Hello. My name is Jordan Belford. "
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
@@ -152,8 +152,11 @@ def train():
                     col = torch.gather(ind,-1,i)
                     tokens = torch.cat((tokens,col),dim=1)
             tokens = tokens[0,:model.max_seq_len].tolist()
-            text = tokenizer.decode(tokens)
-            print(f"Here's a sample for ya: {text}")
+            try:
+                text = tokenizer.decode(tokens)
+                print(f"Here's a sample for ya: {text}")
+            except Exception as e:
+                print(f"Error in decoding: {e}")
             with torch.no_grad():
                 dl_val.reset()
                 val_loss = 0
@@ -167,6 +170,7 @@ def train():
                     loss = loss/val_steps
                     val_loss += loss.detach()
             print(f"VAL LOSS: {val_loss}")
+            torch.save(model.state_dict(),"model.pth")
             model.train()
 
 train()

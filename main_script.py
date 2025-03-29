@@ -96,7 +96,7 @@ dl_val = dataLoader(micro_batch_size, sequence_length,split = "val")
 def get_lr(i):
     if i + NUM_STEPS< warmup:
         return max_lr * (i+1)/warmup
-    if i > NUM_STEPSmax_steps:
+    if i + NUM_STEPS> max_steps:
         return min_lr
     decay = ((i + NUM_STEPS)-warmup)/(max_steps-warmup)
     assert decay >= 0 and decay <= 1
@@ -138,7 +138,7 @@ def train():
                 f.write(f"{i},{total_loss.item()},{effective_batch_size/dt*1000}\n")
 
 
-        if (i+NUM_STEPS)% 100 == 0:
+        if (i + NUM_STEPS)% 100 == 0:
             time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()

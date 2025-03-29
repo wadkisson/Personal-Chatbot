@@ -109,6 +109,8 @@ def train():
     print(f"Micro batch size: {micro_batch_size}")
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
+    temperature = 0.8
+    topk = 50
     
     for (i) in range(max_steps):
         pyautogui.click()
@@ -149,8 +151,9 @@ def train():
                 with torch.no_grad():
                     logits, loss = model.forward(tokens)
                     logits = logits[:,-1,:]
+                    logits = logits/temperature
                     probs = F.softmax(logits,dim=-1)
-                    tk_probs,ind = torch.topk(probs,50,dim=-1)
+                    tk_probs,ind = torch.topk(probs,topk,dim=-1)
                     idx = torch.multinomial(tk_probs,1)
                     col = torch.gather(ind,-1,idx)
                     tokens = torch.cat((tokens,col),dim=1)

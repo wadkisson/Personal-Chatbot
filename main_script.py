@@ -116,7 +116,7 @@ def train():
         optimizer.zero_grad()
         total_loss = 0.0
         # Gradient accumulation loop
-        for j in range(grad_accum_steps):
+        for _ in range(grad_accum_steps):
             sample, truth = dl_train.get_batch()
             sample, truth = sample.to(device), truth.to(device)
             with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):

@@ -110,7 +110,7 @@ def train():
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
     
-    for (i+NUM_STEPS) in range(max_steps):
+    for (i) in range(max_steps):
         pyautogui.click()
         t0 = time.time()
         optimizer.zero_grad()

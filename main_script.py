@@ -95,7 +95,7 @@ dl_train = dataLoader(micro_batch_size, sequence_length,split = "train")
 dl_val = dataLoader(micro_batch_size, sequence_length,split = "val")
 def get_lr(i):
     if i + NUM_STEPS< warmup:
-        return max_lr * (i+1)/warmup
+        return max_lr * (i+1+NUM_STEPS)/warmup
     if i + NUM_STEPS> max_steps:
         return min_lr
     decay = ((i + NUM_STEPS)-warmup)/(max_steps-warmup)
@@ -125,7 +125,7 @@ def train():
             total_loss+=loss.detach()
             loss.backward()
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        lr = get_lr(i)
+        lr = get_lr(i + NUM_STEPS)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
         optimizer.step()
@@ -133,9 +133,9 @@ def train():
             torch.cuda.synchronize()
         t1 = time.time()
         dt = t1 - t0#total time in seconds
-        print(f"Step: {i} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+        print(f"Step: {i + NUM_STEPS} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt}")
         with open ('loss_history.txt','a') as f:
-                f.write(f"{i},{total_loss.item()},{effective_batch_size/dt*1000}\n")
+                f.write(f"{i + NUM_STEPS},{total_loss.item()},{effective_batch_size/dt*1000}\n")
 
 
         if (i + NUM_STEPS)% 100 == 0:

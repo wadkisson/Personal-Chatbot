@@ -13,6 +13,7 @@ import tiktoken
 import time
 import pyautogui
 
+NUM_STEPS = 5100
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
@@ -47,8 +48,7 @@ max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup = 715
 max_steps = 19073
-optimizer = model.set_optimimzers(lr=6e-4, weight_decay=0.1)
-
+optimizer = model.set_optimimzers(lr=max_lr,weight_decay=0.1)
 # Batch size and gradient accumulation setup
 micro_batch_size = 16 # Smaller batch size that fits in memory
 sequence_length = 1024
@@ -94,11 +94,11 @@ class dataLoader:
 dl_train = dataLoader(micro_batch_size, sequence_length,split = "train")
 dl_val = dataLoader(micro_batch_size, sequence_length,split = "val")
 def get_lr(i):
-    if i < warmup:
+    if i + NUM_STEPS< warmup:
         return max_lr * (i+1)/warmup
-    if i > max_steps:
+    if i > NUM_STEPSmax_steps:
         return min_lr
-    decay = (i-warmup)/(max_steps-warmup)
+    decay = ((i + NUM_STEPS)-warmup)/(max_steps-warmup)
     assert decay >= 0 and decay <= 1
     coeff = 0.5 * (1+math.cos(math.pi*decay))
     return min_lr + coeff * (max_lr-min_lr)
@@ -110,7 +110,7 @@ def train():
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
     
-    for i in range(max_steps):
+    for (i+NUM_STEPS) in range(max_steps):
         pyautogui.click()
         t0 = time.time()
         optimizer.zero_grad()
@@ -138,7 +138,7 @@ def train():
                 f.write(f"{i},{total_loss.item()},{effective_batch_size/dt*1000}\n")
 
 
-        if i % 100 == 0:
+        if (i+NUM_STEPS)% 100 == 0:
             time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()
@@ -151,8 +151,8 @@ def train():
                     logits = logits[:,-1,:]
                     probs = F.softmax(logits,dim=-1)
                     tk_probs,ind = torch.topk(probs,50,dim=-1)
-                    i = torch.multinomial(tk_probs,1)
-                    col = torch.gather(ind,-1,i)
+                    idx = torch.multinomial(tk_probs,1)
+                    col = torch.gather(ind,-1,idx)
                     tokens = torch.cat((tokens,col),dim=1)
             tokens = tokens[0,:model.max_seq_len].tolist()
             try:

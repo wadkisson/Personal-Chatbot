@@ -13,7 +13,7 @@ import tiktoken
 import time
 import pyautogui
 
-NUM_STEPS = 5100
+NUM_STEPS = 0
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
@@ -113,7 +113,7 @@ def train():
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
     temperature = 0.8
-    topk = 50
+    topk = 2
     
     for (i) in range(max_steps):
         pyautogui.click()

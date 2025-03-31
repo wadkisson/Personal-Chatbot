@@ -140,7 +140,7 @@ def train():
         dt = t1 - t0#total time in seconds
         print(f"Step: {i + NUM_STEPS} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt},lr={lr}")
         with open ('loss_history.txt','a') as f:
-                f.write(f"{i + NUM_STEPS},{total_loss.item()},{effective_batch_size/dt*1000},{lr}\n")
+                f.write(f"STEP{i + NUM_STEPS} LOSS: {total_loss.item()} BATCH_SIZE:{effective_batch_size/dt*1000} LEARNING RATE:{lr}\n")
 
 
         if (i + NUM_STEPS)% 100 == 0:

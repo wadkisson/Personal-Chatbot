@@ -27,7 +27,9 @@ def tokenize_doc(document):
 def write_file(filename,token_arr):
     with open(filename,"wb") as f:
         f.write(token_arr.tobytes())
+
 nprocs = max(1,os.cpu_count()//2)
+
 with mp.Pool(nprocs) as p:
     shard_idx = 0
     token_count = 0

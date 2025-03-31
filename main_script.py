@@ -71,7 +71,10 @@ class dataLoader:
         shards = sorted(shards)
         shards = [os.path.join(root,shard) for shard in shards]
         self.shards = shards
+        assert len(shards) > 0, f"No shards found in split {split}"
+
         self.reset()
+        
     def reset(self):
         self.current_shard = 0
         self.toks = load_tokens(self.shards[self.current_shard])
@@ -79,8 +82,8 @@ class dataLoader:
     def get_batch(self):
         B,T = self.batch_size, self.seq_len
         chunk = self.toks[self.cur_pos:self.cur_pos + B*T + 1]
-        sample = chunk[:-1].view(B, T)
-        truth = chunk[1:].view(B, T)
+        sample = (chunk[:-1]).view(B, T)
+        truth = (chunk[1:]).view(B, T)
         self.cur_pos += B*T
         
         # Wrap around if we've reached the end
@@ -135,9 +138,9 @@ def train():
             torch.cuda.synchronize()
         t1 = time.time()
         dt = t1 - t0#total time in seconds
-        print(f"Step: {i + NUM_STEPS} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt}")
+        print(f"Step: {i + NUM_STEPS} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt},lr={lr}")
         with open ('loss_history.txt','a') as f:
-                f.write(f"{i + NUM_STEPS},{total_loss.item()},{effective_batch_size/dt*1000}\n")
+                f.write(f"{i + NUM_STEPS},{total_loss.item()},{effective_batch_size/dt*1000},{lr}\n")
 
 
         if (i + NUM_STEPS)% 100 == 0:

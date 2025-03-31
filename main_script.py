@@ -113,7 +113,7 @@ def train():
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
     temperature = 0.8
-    topk = 2
+    topk = 200 # oops, meant to be 200.
     
     for (i) in range(max_steps):
         pyautogui.click()

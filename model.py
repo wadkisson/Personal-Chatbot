@@ -21,6 +21,7 @@ class Attention(nn.Module):
         self.n_embeddings = n_embeddings
         self.attn_linear = nn.Linear(self.n_embeddings, 3 * self.n_embeddings,)
         self.attn_proj = nn.Linear(self.n_embeddings, self.n_embeddings)
+        self.dropout = nn.Dropout(0.1)
         self.n_heads = n_heads
         self.scale = 1
     def forward(self, x):
@@ -31,6 +32,8 @@ class Attention(nn.Module):
         V = V.view(batches, seq_len, self.n_heads, self.n_embeddings // self.n_heads).transpose(1,2)
         x = F.scaled_dot_product_attention(Q,K,V,attn_mask=None,)
         x = x.transpose(1, 2).contiguous().view(batches, seq_len, W)
+        x = self.attn_proj(x)
+        x = self.dropout(x)
         return x
 class Transformer_Block(nn.Module):
     def __init__(self,n_embeddings,n_heads):

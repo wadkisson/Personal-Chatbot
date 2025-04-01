@@ -30,7 +30,7 @@ class Attention(nn.Module):
         Q = Q.view(batches, seq_len, self.n_heads, self.n_embeddings // self.n_heads).transpose(1,2)
         K = K.view(batches, seq_len, self.n_heads, self.n_embeddings // self.n_heads).transpose(1,2)
         V = V.view(batches, seq_len, self.n_heads, self.n_embeddings // self.n_heads).transpose(1,2)
-        x = F.scaled_dot_product_attention(Q,K,V,attn_mask=None,)
+        x = F.scaled_dot_product_attention(Q,K,V,attn_mask=None,is_causal=True)#added casual masking
         x = x.transpose(1, 2).contiguous().view(batches, seq_len, W)
         x = self.attn_proj(x)
         x = self.dropout(x)

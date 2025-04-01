@@ -6,11 +6,13 @@ class Feed_forward_block(nn.Module):
     def __init__(self,n_embeddings):
         super().__init__()
         self.FF = nn.Linear(n_embeddings,4 * n_embeddings)
+        self.dropout = nn.Dropout(0.1)
         self.proj = nn.Linear(4 * n_embeddings,n_embeddings)
         self.GELU = nn.GELU()
     def forward(self,x):
         x = self.FF(x)
         x = self.GELU(x)
+        x = self.dropout(x)
         x = self.proj(x)
         return x
 class Attention(nn.Module):

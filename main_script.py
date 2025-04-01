@@ -12,8 +12,9 @@ from datasets import load_dataset
 import tiktoken
 import time
 import pyautogui
+import random
 
-NUM_STEPS = 0
+NUM_STEPS = 200
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
@@ -77,8 +78,10 @@ class dataLoader:
         
     def reset(self):
         self.current_shard = 0
+        random.shuffle(self.shards)
         self.toks = load_tokens(self.shards[self.current_shard])
-        self.cur_pos = self.batch_size * self.seq_len
+        offset = len(self.toks)-self.batch_size*self.seq_len-1
+        self.cur_pos = random.randint(0,max(1,offset))
     def get_batch(self):
         B,T = self.batch_size, self.seq_len
         chunk = self.toks[self.cur_pos:self.cur_pos + B*T + 1]
@@ -112,7 +115,7 @@ def train():
     print(f"Micro batch size: {micro_batch_size}")
     print(f"Gradient accumulation steps: {grad_accum_steps}")
     print(f"Effective batch size: {effective_batch_size}")
-    temperature = 0.8
+    temperature = 1.0 # greater temp = more randomness in generation.
     topk = 200 # oops, meant to be 200.
     
     for (i) in range(max_steps):
@@ -143,11 +146,11 @@ def train():
                 f.write(f"STEP{i + NUM_STEPS} LOSS: {total_loss.item()} BATCH_SIZE:{effective_batch_size/dt*1000} LEARNING RATE:{lr}\n")
 
 
-        if (i + NUM_STEPS)% 100 == 0:
+        if (i + NUM_STEPS)% 50 == 0:
             time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()
-            input = "Hello. My name is Jordan Belford. "
+            input = "The cuases of World War I were complex, involving alliances,"
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
             while tokens.size(1)<model.max_seq_len:
@@ -182,3 +185,5 @@ def train():
             model.train()
 
 train()
+
+#added random shuffling

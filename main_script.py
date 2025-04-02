@@ -14,7 +14,7 @@ import time
 import pyautogui
 import random
 
-NUM_STEPS = 200
+NUM_STEPS = 0
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
@@ -123,6 +123,7 @@ def train():
         t0 = time.time()
         optimizer.zero_grad()
         total_loss = 0.0
+        #rep_penalty = 1.2 #add a repitition penalty for the model
         # Gradient accumulation loop
         for _ in range(grad_accum_steps):
             sample, truth = dl_train.get_batch()
@@ -157,6 +158,8 @@ def train():
                 with torch.no_grad():
                     logits, loss = model.forward(tokens)
                     logits = logits[:,-1,:]
+                    #for t in set(tokens[0].tolist()):
+                        #logits[0,t]/=rep_penalty
                     logits = logits/temperature
                     probs = F.softmax(logits,dim=-1)
                     tk_probs,ind = torch.topk(probs,topk,dim=-1)

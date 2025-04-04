@@ -60,6 +60,7 @@ def load_tokens(file):
     tokens = np.fromfile(file,dtype= np.uint16)
     tokens = torch.tensor(tokens,dtype = torch.long)
     return tokens
+
 class dataLoader:
     def __init__(self, batch_size, seq_len,split):
         self.batch_size = batch_size
@@ -72,7 +73,6 @@ class dataLoader:
         shards = [os.path.join(root,shard) for shard in shards]
         self.shards = shards
         assert len(shards) > 0, f"No shards found in split {split}"
-
         self.reset()
         
     def reset(self):
@@ -98,6 +98,7 @@ class dataLoader:
 # Initialize data loader with micro batch size
 dl_train = dataLoader(micro_batch_size, sequence_length,split = "train")
 dl_val = dataLoader(micro_batch_size, sequence_length,split = "val")
+
 def get_lr(i):
     if i + NUM_STEPS< warmup:
         return max_lr * (i+1+NUM_STEPS)/warmup
@@ -132,6 +133,7 @@ def train():
             loss = loss / grad_accum_steps
             total_loss+=loss.detach()
             loss.backward()
+     
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         lr = get_lr(i + NUM_STEPS)
         for param_group in optimizer.param_groups:
@@ -143,13 +145,28 @@ def train():
         dt = t1 - t0#total time in seconds
         print(f"Step: {i + NUM_STEPS} | Loss: {total_loss} | toks per second ={micro_batch_size*sequence_length/dt},lr={lr}")
         with open ('loss_history.txt','a') as f:
-                f.write(f"STEP{i + NUM_STEPS} LOSS: {total_loss.item()} BATCH_SIZE:{effective_batch_size/dt*1000} LEARNING RATE:{lr}\n")
-
+                f.write(f"{i + NUM_STEPS},{total_loss.item():.4f},{effective_batch_size/dt*1000:.2f},{lr:.6f}\n")
 
         if (i + NUM_STEPS)% 50 == 0:
             time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()
+            with torch.no_grad():
+                dl_val.reset()
+                val_loss_accum = 0.0
+                val_steps = 20
+                for _ in range (val_steps):
+                    sample, truth = dl_val.get_batch()
+                    sample = sample.to(device)
+                    truth = truth.to(device)
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
+                        val_logits, val_loss = model.forward(toks = sample, targets = truth)
+                    val_loss = val_loss/val_steps
+                    val_loss_accum += val_loss.detach()
+            print(f"VAL LOSS: {val_loss_accum}")
+            with open("val_loss_history.txt","a") as f:
+                f.write(f"{i + NUM_STEPS},{val_loss_accum:.4f}\n")
+
             input = "The causes of World War I were complex, involving alliances,"
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
@@ -166,24 +183,17 @@ def train():
                     col = torch.gather(ind,-1,idx)
                     tokens = torch.cat((tokens,col),dim=1)
             tokens = tokens[0,:model.max_seq_len].tolist()
+            
             try:
                 text = tokenizer.decode(tokens)
                 print(f"Here's a sample for ya: {text}")
+                with open("samples.txt","a") as f:
+                    f.write(f"STEP: {i+NUM_STEPS}\n{text}\n")
             except Exception as e:
                 print(f"Error in decoding: {e}")
-            with torch.no_grad():
-                dl_val.reset()
-                val_loss_accum = 0.0
-                val_steps = 20
-                for _ in range (val_steps):
-                    sample, truth = dl_val.get_batch()
-                    sample = sample.to(device)
-                    truth = truth.to(device)
-                    with torch.autocast(device_type=device, dtype=torch.bfloat16 if device == 'cuda' else torch.float16):
-                        logits, val_loss = model.forward(toks = sample, targets = truth)
-                    val_loss = val_loss/val_steps
-                    val_loss_accum += val_loss.detach()
-            print(f"VAL LOSS: {val_loss_accum}")
+                with open("samples.txt","a") as f:
+                    f.write(f"Error decoding these the tokens on step {i + NUM_STEPS}\n")
+           
             model.train()
 
 train()

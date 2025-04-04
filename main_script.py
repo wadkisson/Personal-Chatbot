@@ -8,7 +8,6 @@ import torch.nn
 import torch.nn.functional as F
 import os
 import math
-from datasets import load_dataset
 import tiktoken
 import time
 import pyautogui
@@ -123,7 +122,7 @@ def train():
         t0 = time.time()
         optimizer.zero_grad()
         total_loss = 0.0
-        #rep_penalty = 1.2 #add a repitition penalty for the model
+        rep_penalty = 1.2 #add a repitition penalty for the model
         # Gradient accumulation loop
         for _ in range(grad_accum_steps):
             sample, truth = dl_train.get_batch()
@@ -151,15 +150,15 @@ def train():
             time.sleep(60)
             torch.save(model.state_dict(),"model.pth")
             model.eval()
-            input = "The cuases of World War I were complex, involving alliances,"
+            input = "The causes of World War I were complex, involving alliances,"
             tokens = tokenizer.encode(input)
             tokens = torch.tensor(tokens).unsqueeze(0).to(device)
             while tokens.size(1)<model.max_seq_len:
                 with torch.no_grad():
                     logits, loss = model.forward(tokens)
                     logits = logits[:,-1,:]
-                    #for t in set(tokens[0].tolist()):
-                        #logits[0,t]/=rep_penalty
+                    for t in set(tokens[0].tolist()):
+                        logits[0,t]/=rep_penalty
                     logits = logits/temperature
                     probs = F.softmax(logits,dim=-1)
                     tk_probs,ind = torch.topk(probs,topk,dim=-1)
@@ -188,5 +187,3 @@ def train():
             model.train()
 
 train()
-
-#added random shuffling

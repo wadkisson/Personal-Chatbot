@@ -2,9 +2,9 @@
 import tiktoken
 import numpy as np
 import multiprocessing as mp
-from datasets import load_dataset#pip install datasets
+from datasets import load_dataset
 import os
-import tqdm as tqdm#pip install tqdm
+import tqdm as tqdm
 
 
 local_directory = "edu_fineweb10B"

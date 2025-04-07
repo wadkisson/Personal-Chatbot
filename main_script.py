@@ -13,7 +13,7 @@ import time
 import pyautogui
 import random
 
-NUM_STEPS = 6300
+NUM_STEPS = 17750
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 

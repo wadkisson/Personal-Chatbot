@@ -48,7 +48,7 @@ max_lr = 2e-5
 min_lr = 2e-6
 max_steps = 600
 warmup = 60
-optimizer = model.set_optimizers(lr=max_lr, weight_decay=0.1)
+optimizer = model.set_optimimzers(lr=max_lr, weight_decay=0.1)
 micro_batch_size = 16
 sequence_length = 1024
 grad_accum_steps = 32
@@ -177,8 +177,13 @@ def train():
             try:
                 text = tokenizer.decode(tokens[0].tolist())
                 print(f"Sample conversation:\n{text}")
+                with open("samples_FINETUNE.txt","a") as f:
+                     f.write(f"STEP: {i+NUM_STEPS}\n{text}\n")
             except Exception as e:
+                text = "There was an error in enc/dec the text :("
                 print(f"Error in decoding: {e}")
+                with open("samples_FINETUNE.txt","a") as f:
+                    f.write(f"Error decoding these the tokens on step {i + NUM_STEPS}\n")
             
             # Validation
             with torch.no_grad():

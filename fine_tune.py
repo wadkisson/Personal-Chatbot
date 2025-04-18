@@ -36,18 +36,18 @@ model = model.to(device)
 if device == 'cuda':
     model = torch.compile(model)
 
-if os.path.exists("model2.pth"):
+if os.path.exists("model_FINETUNE.pth"):
     print("Model found!")
-    model.load_state_dict(torch.load("model2.pth"))
+    model.load_state_dict(torch.load("model_FINETUNE.pth"))
 else:
     print("No model found")
 
 
 # Training parameters
-max_lr = 6e-5
-min_lr = 6e-6
-max_steps = 600
-warmup = 60
+max_lr = 2e-5
+min_lr = 2e-6
+max_steps = 2000
+warmup = 100
 optimizer = model.set_optimimzers(lr=max_lr, weight_decay=0.1)
 micro_batch_size = 16
 sequence_length = 128
@@ -154,7 +154,7 @@ def train():
         
         if (i + NUM_STEPS) % 50 == 0:
             time.sleep(60)
-            torch.save(model.state_dict(), "model2.pth")
+            torch.save(model.state_dict(), "model_FINETUNE.pth")
             model.eval()
             
             input_text = "<|startoftext|>Patient: I'm going through a really tough time right now. Can I talk to you about my problems?Therapist:"

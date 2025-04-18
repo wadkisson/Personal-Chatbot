@@ -1,4 +1,4 @@
-A personal AI therapist Chatbot I made, completly from scratch!
+A personal AI therapist chatbot I made, completly from scratch!
 
 This was an educational project for me — how could I make something that would take me from zero machine learning knowledge to a postion where I feel confident in my abilities to develop and test models?
 

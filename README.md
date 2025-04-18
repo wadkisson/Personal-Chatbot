@@ -1,3 +1,5 @@
+A personal AI therapist Chatbot I made, completly from scratch!
+
 This was an educational project for me — how could I make something that would take me from zero machine learning knowledge to a postion where I feel confident in my abilities to develop and test models?
 
 I trained this model on 38100 training steps on the FinewebEDU 10BT data set. My loss settled to around 3.1. I then fine-tuned my model on a small dataset that simulated therapy conversations: https://huggingface.co/datasets/jerryjalapeno/nart-100k-synthetic

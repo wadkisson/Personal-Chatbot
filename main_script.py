@@ -13,7 +13,7 @@ import time
 import pyautogui
 import random
 
-NUM_STEPS = 18601
+NUM_STEPS = 19050
 tokenizer = tiktoken.get_encoding("gpt2")
 end_of_text_token = tokenizer._special_tokens['<|endoftext|>']
 
@@ -37,9 +37,9 @@ model = model.to(device)
 if device == 'cuda':
     model = torch.compile(model) #- use for gpu training
 
-if os.path.exists("model.pth"):
+if os.path.exists("model2.pth"):
     print("Model found!")
-    model.load_state_dict(torch.load("model.pth"))
+    model.load_state_dict(torch.load("model2.pth"))
 else:
     print("No model found")
 
@@ -47,7 +47,7 @@ else:
 max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup = 715
-max_steps = 19073
+max_steps = 19050
 optimizer = model.set_optimimzers(lr=max_lr,weight_decay=0.1)
 # Batch size and gradient accumulation setup
 micro_batch_size = 16 # Smaller batch size that fits in memory
@@ -149,7 +149,7 @@ def train():
 
         if (i + NUM_STEPS)% 50 == 0:
             time.sleep(60)
-            torch.save(model.state_dict(),"model.pth")
+            torch.save(model.state_dict(),"model2.pth")
             model.eval()
             with torch.no_grad():
                 dl_val.reset()

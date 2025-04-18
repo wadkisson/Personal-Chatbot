@@ -1,17 +1,29 @@
 A personal AI therapist chatbot I made, completly from scratch!
 
 A breif decription for all the files:
+
 -tinyS.txt: Ignore. This was a small toy dataset I used to test my models architecture in the very early stages of the project.
+
 -model.py: This is the model architecture.
+
 -main_script.py: This is the main script for the model's pre-training.
+
 -fineweb_loader.py: This is the script I pulled straight from a tutorial I followed on how to download the Fineweb dataset.
+
 -loss_history.txt: Recordings of the loss at every pre-training step.
+
 -val_loss_history.txt: Recordings of the validation loss at every 50 pre-training steps.
+
 -samples.txt: A sample from the model's pre-training at every step I recorded the validation loss.
+
 -fine_tune.py: This is the main script for the model's fine-tuning.
+
 -finet_val_samples.txt: Recordings of the validation loss at every 50 fine-tuning steps, along with a sample from the model at that step.
+
 -pretrain_loss.png: Graph representation of the pre-training loss over time.
+
 -pretrain_val_loss.png: Graph representation of the pre-training validation loss over time.
+
 -finetune_val_loss.png: Graph representation of the fine-tuning validation loss over time.
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
